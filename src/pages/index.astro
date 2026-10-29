@@ -1,0 +1,464 @@
+---
+// =============================================================================
+// index.astro — the whole one-page site.
+// Text and business details come from src/data/site.js.
+// Styles live in src/styles/global.css.
+// Sections, in order: header, hero, services, process, recent projects,
+// rating band, quote form, footer, mobile bottom bar.
+// =============================================================================
+import { Image, getImage } from 'astro:assets';
+import '../styles/global.css';
+import { site, nav, strata, services, steps, gallery, facts, chips, propertyTypes } from '../data/site.js';
+
+// All photos live in src/assets/. This picks one by file name, e.g. img('hero').
+// To swap a photo: replace the file in src/assets/ keeping the same name.
+const images = import.meta.glob('../assets/*.{jpg,jpeg,png,webp}', { eager: true });
+function img(name) {
+  const key = Object.keys(images).find((k) => k.split('/').pop().replace(/\.\w+$/, '') === name);
+  if (!key) throw new Error(`Image "${name}" not found in src/assets/`);
+  return images[key].default;
+}
+
+const canonical = new URL('/', Astro.site).href;
+const ogImage = await getImage({ src: img('hero'), width: 1200, format: 'jpg' });
+const ogImageUrl = new URL(ogImage.src, Astro.site).href;
+const year = new Date().getFullYear();
+
+// Search-engine data (LocalBusiness / HomeAndConstructionBusiness), built from site.js.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'HomeAndConstructionBusiness',
+  name: site.name,
+  legalName: site.legalName,
+  description: site.description,
+  url: canonical,
+  image: ogImageUrl,
+  logo: new URL('/favicon.svg', Astro.site).href,
+  email: site.email || undefined,
+  telephone: site.phone.tel || undefined,
+  openingHours: site.hours || undefined,
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: site.address.locality,
+    addressRegion: site.address.region,
+    addressCountry: site.address.country,
+  },
+  areaServed: site.areaServed,
+  sameAs: site.socials.length ? site.socials.map((s) => s.url) : undefined,
+  makesOffer: services.map((s) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: s.title } })),
+};
+
+// Settings passed to the browser script (form handler).
+const formConfig = {
+  endpoint: site.FORM_ENDPOINT,
+  email: site.email,
+  phone: site.phone.display,
+  name: site.name,
+};
+---
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{site.title}</title>
+    <meta name="description" content={site.description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#191A17" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_CA" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:title" content={site.title} />
+    <meta property="og:description" content={site.description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Albert+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Turns on animations. Without JavaScript, everything simply shows. -->
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <!-- ===================== HEADER ===================== -->
+    <header class="header">
+      <div class="container header__inner">
+        <a href="#top" class="logo" aria-label={`${site.name}, back to top`}>
+          <span class="logo__mark" aria-hidden="true">
+            {strata.map((l) => <span style={`background:${l.color}`}></span>)}
+          </span>
+          <span class="logo__words">
+            <span class="logo__name">Groundscape</span>
+            <span class="logo__tag">Design and Build</span>
+          </span>
+        </a>
+
+        <nav class="nav" aria-label="Main">
+          {nav.map((n) => <a href={n.href}>{n.label}</a>)}
+        </nav>
+
+        <div class="header__actions">
+          <a href="#quote" class="header__cta">Get an estimate</a>
+          <button class="menu-btn" type="button" aria-expanded="false" aria-controls="mobile-menu">
+            <span class="menu-btn__icon" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="menu-btn__label">Menu</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile menu (below 1000px) -->
+      <div class="mobile-menu" id="mobile-menu" hidden>
+        <nav aria-label="Mobile">
+          <ul>
+            {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+            <li><a href="#quote">Get an estimate</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ===================== HERO ===================== -->
+      <section class="hero">
+        <div class="hero__copy">
+          <p class="hero__meta" data-hero style="--i:0">
+            <span class="stars">★★★★★ {site.rating.value} on {site.rating.source}</span><span>Verified</span><span>Warranty offered</span>
+          </p>
+          <h1 data-hero style="--i:1">Outdoor spaces, <span class="accent">built from the ground up.</span></h1>
+          <p class="hero__lead" data-hero style="--i:2">{site.description}</p>
+          <div class="hero__ctas" data-hero style="--i:3">
+            <a href="#quote" class="btn btn--clay">Plan your project</a>
+            <a href="#services" class="btn btn--outline">What we build</a>
+          </div>
+        </div>
+        <div class="hero__photo photo">
+          <Image
+            src={img('hero')}
+            alt="Finished backyard with a paver patio and retaining wall"
+            widths={[640, 960, 1280, 1800]}
+            sizes="(min-width: 1000px) 49vw, 100vw"
+            loading="eager"
+            fetchpriority="high"
+          />
+          <div class="strata" aria-hidden="true">
+            {strata.map((l, i) => <span style={`height:${l.height};background:${l.color};--i:${i}`}></span>)}
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== SERVICES ===================== -->
+      <section id="services" class="container section">
+        <div class="services__head">
+          <h2 class="h2" data-reveal>Every layer, <span class="accent">one crew.</span></h2>
+          <p class="services__intro" data-reveal>From site preparation to the finishing touches, we handle every part of the job, for residential and commercial clients.</p>
+        </div>
+        <div class="services__box">
+          <div class="services__list" role="tablist" aria-label="Our services" aria-orientation="vertical">
+            {services.map((s, i) => (
+              <button
+                type="button"
+                class="svc-tab"
+                role="tab"
+                id={`svc-tab-${i}`}
+                aria-controls={`svc-panel-${i}`}
+                aria-selected={i === 0 ? 'true' : 'false'}
+                tabindex={i === 0 ? '0' : '-1'}
+              >
+                <span class="svc-tab__title">{s.title}</span>
+                <span class="svc-tab__dot" aria-hidden="true"></span>
+              </button>
+            ))}
+          </div>
+          {services.map((s, i) => (
+            <div class="svc-panel" role="tabpanel" id={`svc-panel-${i}`} aria-labelledby={`svc-tab-${i}`} hidden={i !== 0}>
+              <div class="photo">
+                <Image src={img(s.image)} alt={s.alt} widths={[480, 800, 1200]} sizes="(min-width: 1000px) 52vw, 100vw" />
+              </div>
+              <div class="svc-panel__body">
+                <div class="svc-panel__inner">
+                  <h3>{s.title}</h3>
+                  <p>{s.text}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- ===================== PROCESS ===================== -->
+      <section id="process" class="process">
+        <div class="container section">
+          <h2 class="h2" data-reveal>From first plan to <span class="accent">final finish.</span></h2>
+          <div class="steps">
+            {steps.map((s) => (
+              <div class="step" data-reveal style={`border-top-color:${s.color}`}>
+                <h3>{s.title}</h3>
+                <p>{s.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== RECENT PROJECTS ===================== -->
+      <section id="work" class="container section">
+        <div class="work__head">
+          <h2 class="h2" data-reveal>Recent projects.</h2>
+          <p class="work__intro" data-reveal>Functional, visually striking outdoor spaces, built with quality materials.</p>
+        </div>
+        <div class="gallery">
+          {gallery.map((g, i) => (
+            <div class="gallery__item photo" data-reveal>
+              <Image
+                src={img(g.image)}
+                alt={g.alt}
+                widths={i === 0 ? [600, 900, 1400] : [400, 700, 1000]}
+                sizes={i === 0 ? '(min-width: 700px) 50vw, 100vw' : '(min-width: 1000px) 25vw, (min-width: 700px) 50vw, 100vw'}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- ===================== RATING BAND ===================== -->
+      <section class="rating" aria-label="Reviews">
+        <div class="container rating__inner">
+          <div class="rating__score" data-reveal>
+            <span class="rating__num">{site.rating.value}</span>
+            <span class="rating__stars">★★★★★ on {site.rating.source}</span>
+          </div>
+          <div class="rating__text" data-reveal>
+            <p class="rating__quote">Every review so far is five stars. Verified by HomeStars, with a warranty on our work.</p>
+            <a class="rating__link" href={site.homestarsUrl} target="_blank" rel="noopener">Read our reviews on HomeStars</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== QUOTE FORM ===================== -->
+      <section id="quote" class="container section quote">
+        <div class="quote__copy">
+          <h2 class="h2" data-reveal>Tell us what you’re <span class="accent">picturing.</span></h2>
+          <p class="quote__intro" data-reveal>Curb appeal, an outdoor living area or a large commercial landscape. We’ll tailor the plan to your vision and your budget.</p>
+          <dl class="facts" data-reveal>
+            {facts.map((f) => <div><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+          </dl>
+        </div>
+
+        <div class="quote__form-wrap" data-reveal>
+          <form class="form" id="quote-form" data-config={JSON.stringify(formConfig)}>
+            <div class="form__grid">
+              <label class="field">Name<input name="name" autocomplete="name" required /></label>
+              <label class="field">Phone<input name="phone" type="tel" autocomplete="tel" required /></label>
+              <label class="field">Email<input name="email" type="email" autocomplete="email" required /></label>
+              <label class="field">Property
+                <select name="property">
+                  {propertyTypes.map((p) => <option>{p}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <fieldset class="chips">
+              <legend class="sr-only">Services you’re interested in</legend>
+              <div class="chips__list">
+                {chips.map((c) => <button type="button" class="chip" aria-pressed="false" data-chip={c}>{c}</button>)}
+              </div>
+              <!-- Chips write their picks into this hidden field -->
+              <input type="hidden" name="services" value="" />
+            </fieldset>
+
+            <label class="field">About your project<textarea name="message" rows="4"></textarea></label>
+
+            <!-- Spam trap: real people never see or fill this -->
+            <div class="honeypot" aria-hidden="true">
+              <label>Leave this empty<input type="text" name="_gotcha" tabindex="-1" autocomplete="off" /></label>
+            </div>
+
+            <p class="form__error" role="alert" hidden></p>
+            <button type="submit" class="form__submit">Request an estimate</button>
+          </form>
+
+          <div class="thanks" id="quote-thanks" tabindex="-1" role="status" hidden>Thank you. We’ll be in touch about your project.</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===================== FOOTER ===================== -->
+    <footer class="footer">
+      <div class="container footer__inner">
+        <span class="footer__name">{site.legalName}</span>
+        <span>{site.address.display} · {site.companyNumber}</span>
+        <div class="footer__legal">
+          <span>© {year} {site.legalName}</span>
+          <a href="https://backpackdigitalmedia.com" target="_blank" rel="noopener">Powered by Backpack Digital Media</a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Mobile sticky bottom bar (below 1000px) -->
+    <div class="mobile-bar">
+      <a href="#quote">Get an estimate</a>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------------
+      // 1. Mobile menu: opens/closes the dropdown, closes on link click + Esc
+      // ---------------------------------------------------------------------
+      const menuBtn = document.querySelector<HTMLButtonElement>('.menu-btn');
+      const menu = document.getElementById('mobile-menu');
+      if (menuBtn && menu) {
+        const setMenu = (open: boolean) => {
+          menuBtn.setAttribute('aria-expanded', String(open));
+          menu.hidden = !open;
+        };
+        menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+        menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !menu.hidden) {
+            setMenu(false);
+            menuBtn.focus();
+          }
+        });
+        window.matchMedia('(min-width: 1000px)').addEventListener('change', (e) => { if (e.matches) setMenu(false); });
+      }
+
+      // ---------------------------------------------------------------------
+      // 2. Services list: click (or hover with a mouse) to show a service.
+      //    Arrow keys move between services.
+      // ---------------------------------------------------------------------
+      const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('.svc-tab'));
+      const pick = (index: number, focus = false) => {
+        tabs.forEach((tab, i) => {
+          const on = i === index;
+          const panel = document.getElementById(tab.getAttribute('aria-controls') || '');
+          if (on && tab.getAttribute('aria-selected') === 'true') return; // already showing
+          tab.setAttribute('aria-selected', String(on));
+          tab.tabIndex = on ? 0 : -1;
+          if (panel) panel.hidden = !on;
+        });
+        if (focus) tabs[index].focus();
+      };
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => pick(i));
+        tab.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') pick(i); });
+        tab.addEventListener('keydown', (e) => {
+          let next = -1;
+          if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = (i + 1) % tabs.length;
+          if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = (i - 1 + tabs.length) % tabs.length;
+          if (e.key === 'Home') next = 0;
+          if (e.key === 'End') next = tabs.length - 1;
+          if (next >= 0) { e.preventDefault(); pick(next, true); }
+        });
+      });
+
+      // ---------------------------------------------------------------------
+      // 3. Scroll reveal. Elements already on screen stay put; ones further
+      //    down start hidden and rise in (80ms apart) as you scroll to them.
+      //    Skipped entirely for visitors who prefer reduced motion.
+      // ---------------------------------------------------------------------
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduceMotion && 'IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+          let n = 0;
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const el = entry.target as HTMLElement;
+            el.style.setProperty('--reveal-delay', `${n++ * 0.08}s`);
+            el.classList.remove('reveal-pending');
+            io.unobserve(el);
+          });
+        }, { rootMargin: '0px 0px -8% 0px' });
+        document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
+          if (el.getBoundingClientRect().top < window.innerHeight) return;
+          el.classList.add('reveal-pending');
+          io.observe(el);
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // 4. Quote form
+      //    - Chips are toggle buttons; picks are written into the hidden
+      //      "services" field.
+      //    - If FORM_ENDPOINT is set in src/data/site.js, the form is sent
+      //      there (Formspree compatible).
+      //    - If FORM_ENDPOINT is empty, we open the visitor's email app with a
+      //      pre-filled message to the business email instead.
+      //    Either way, the thank-you message is shown afterwards.
+      // ---------------------------------------------------------------------
+      const form = document.getElementById('quote-form') as HTMLFormElement | null;
+      const thanks = document.getElementById('quote-thanks');
+      if (form && thanks) {
+        const config = JSON.parse(form.dataset.config || '{}');
+        const servicesInput = form.querySelector<HTMLInputElement>('input[name="services"]')!;
+        const errorBox = form.querySelector<HTMLElement>('.form__error')!;
+        const submitBtn = form.querySelector<HTMLButtonElement>('.form__submit')!;
+        const chipBtns = Array.from(form.querySelectorAll<HTMLButtonElement>('.chip'));
+
+        chipBtns.forEach((chip) => {
+          chip.addEventListener('click', () => {
+            chip.setAttribute('aria-pressed', String(chip.getAttribute('aria-pressed') !== 'true'));
+            servicesInput.value = chipBtns
+              .filter((c) => c.getAttribute('aria-pressed') === 'true')
+              .map((c) => c.dataset.chip)
+              .join(', ');
+          });
+        });
+
+        const showThanks = () => {
+          form.hidden = true;
+          thanks.hidden = false;
+          thanks.focus();
+        };
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          errorBox.hidden = true;
+          const data = new FormData(form);
+          if (data.get('_gotcha')) return; // spam bot filled the trap
+
+          if (config.endpoint) {
+            // --- Send to Formspree (or any service that accepts the same format) ---
+            submitBtn.disabled = true;
+            try {
+              const res = await fetch(config.endpoint, {
+                method: 'POST',
+                body: data,
+                headers: { Accept: 'application/json' },
+              });
+              if (!res.ok) throw new Error('Request failed');
+              showThanks();
+            } catch {
+              const contact = config.phone ? `call us at ${config.phone}` : `email us at ${config.email}`;
+              errorBox.textContent = `Sorry, your message didn’t send. Please try again or ${contact}.`;
+              errorBox.hidden = false;
+            } finally {
+              submitBtn.disabled = false;
+            }
+          } else {
+            // --- No endpoint yet: open an email to the business instead ---
+            const get = (k: string) => String(data.get(k) || '').trim();
+            const body = [
+              `Name: ${get('name')}`,
+              `Phone: ${get('phone')}`,
+              `Email: ${get('email')}`,
+              `Property: ${get('property')}`,
+              `Services: ${get('services') || 'Not specified'}`,
+              '',
+              'About the project:',
+              get('message') || '(no details given)',
+            ].join('\n');
+            const subject = `Estimate request from ${get('name') || 'the website'}`;
+            window.location.href = `mailto:${config.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            showThanks();
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
